@@ -1,0 +1,748 @@
+d<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Chicago Strategic Subject Analysis</title>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="http://d3js.org/topojson.v2.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">
+
+  </head>
+
+  <style>
+  #hovertext{
+    font-size:25px;
+  }
+  body{
+    background-color: black;
+    font-family: 'Roboto Condensed', sans-serif;
+    padding:20px;
+  }
+  p{
+    color:white;
+  }
+  h1{
+    color:white;
+  }
+  .axis path,
+  .axis line {
+    fill:none;
+    stroke:white;
+    stroke-width:2;
+  }
+  .axis text{
+    fill:white;
+  }
+  .mappieces:hover{
+    opacity: 0.3;
+  }
+
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: grey;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+    top: -5px;
+    left: 105%;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+
+
+  </style>
+
+  <h1>Chicago Strategic Subject List Analysis</h1>
+  <p>We present an analysis of the Chicago Police Department's (CPD) Strategic Subject List (SSL).
+    The SSL is a database the CPD developed as a training set for their predictive policing algorithms.
+    There were <b>399,000+</b> people put on this database between 2012 and 2016.
+    Each person on this database had some interaction with the CPD, and was then assigned a score that
+    rates their risk of being involved in a violent crime.
+    <br>
+    <br>
+    When using the designation "likelyhood of being <b>involved</b> in a violent crime", this score alone
+    does not distinguish between people likely to be victims or perpetraters of violent crimes.
+    The CPD refuses to release their algorithm that determines this score, and is not transparent
+    on how they use this score.
+    <br>
+    <br>
+    The people put on this database were people the CPD were policing, so the algorithm
+    that determines this score is heavily dependent on who the CPD believes to be criminal;
+    just because it is a computer assigning this score does not mean it is objective.
+    We will use this database to bring to light which communities and groups of people CPD are policing.
+  </p>
+
+
+
+
+  <h1>Map of Chicago Area</h1>
+  <p>Explore the different rates at which the CPD puts people on the SSL and
+    the neighborhoods they police.
+  By clicking on a Chicago neighborhood, you can see the overall percentage of people on the SSL in that neighborhood,
+  as well the percentage of people on the SSL for each demographic.
+  We also include general information about the neighborhood. </p>
+
+
+<svg id= "map" style="float:left"></svg>
+
+<svg id= "ppl" width="600" height="700" style="float:right"></svg>
+
+
+  <body>
+
+    <script>
+
+    // START HELPER FUNCTIONS FOR CREATING PEOPLE GRAPHS
+    var ppl_svg= d3.select("#ppl");
+    function determine_neighborhood(d){
+      var pre_hood = d.properties.pri_neigh.toUpperCase();
+
+      if(pre_hood=="BOYSTOWN"||pre_hood=="WRIGLEYVILLE"){return "LAKE VIEW";}
+      else if (pre_hood == "GALEWOOD"){return "AUSTIN";}
+      else if (pre_hood == "LITTLE VILLAGE"){return "SOUTH LAWNDALE";}
+      else if (pre_hood == "SHEFFIELD & DEPAUL"){return "LINCOLN PARK";}
+      else if (pre_hood == "ANDERSONVILLE"){return "EDGEWATER";}
+      else if (pre_hood == "WEST LOOP" || pre_hood=="LITTLE ITALY, UIC"|| pre_hood=="UNITED CENTER"){return "NEAR WEST SIDE";}
+      else if (pre_hood == "CHINATOWN"){return "ARMOUR SQUARE";}
+      else if (pre_hood == "JACKSON PARK"){return "WOODLAWN";}
+      else if (pre_hood == "GREEKTOWN"){return "NEAR WEST SIDE";}
+      else if (pre_hood == "O'HARE"){return "OHARE";}
+      else if (pre_hood == "RIVER NORTH"||pre_hood=="GOLD COAST"||pre_hood=="STREETERVILLE"||pre_hood=="OLD TOWN"||pre_hood=="RUSH & DIVISION"||pre_hood=="MAGNIFICENT MILE" ){return "NEAR NORTH SIDE";}
+      else if (pre_hood == "WICKER PARK"|| pre_hood=="BUCKTOWN"||pre_hood=="EAST VILLAGE"|| pre_hood=="UKRAINIAN VILLAGE"){return "WEST TOWN";}
+      else if (pre_hood == "SAUGANASH,FOREST GLEN"){ return "FOREST GLEN";}
+      else if (pre_hood == "MUSEUM CAMPUS"){return "NEAR SOUTH SIDE"}
+      else if (pre_hood=="MILLENIUM PARK"||pre_hood=="GRANT PARK"||pre_hood=="PRINTERS ROW"){return "LOOP";}
+      else if (pre_hood=="GRAND CROSSING"){return "GREATER GRAND CROSSING";}
+      else {return pre_hood;}
+    }
+
+    //need for global scope of neighborhood data
+    var pplinfo;
+
+    var personpath= "M7570 15993 c-19 -1 -87 -8 -150 -14 -166 -16 -393 -54 -560 -95 -799 -196 -1463 -619 -1917 -1222 -385 -511 -608 -1117 -685 -1862 -17 -165 -17 -703 0 -885 44 -465 133 -887 282 -1335 237 -712 586 -1341 1037 -1866 93 -109 338 -357 441 -447 l43 -38 -4 -477 c-4 -532 -4 -530 -77 -689 -68 -146 -182 -270 -309 -336 -36 -19 -129 -54 -206 -77 -199 -59 -586 -199 -820 -295 -942 -389 -1771 -877 -2439 -1438 -168 -141 -498 -471 -606 -607 -174 -218 -298 -435 -357 -625 l-28 -90 0 -675 0 -675 23 -75 c137 -435 652 -827 1528 -1163 2099 -805 5702 -1002 8514 -467 1550 295 2674 784 3092 1344 64 86 126 207 154 301 16 54 18 121 22 675 2 426 0 639 -8 694 -74 513 -739 1250 -1715 1903 -765 511 -1642 922 -2576 1208 -76 23 -138 50 -179 76 -171 110 -311 320 -354 531 -13 64 -16 155 -16 520 l0 443 83 72 c181 158 415 413 589 643 968 1282 1374 3076 1017 4495 -112 445 -309 863 -569 1210 -483 644 -1206 1086 -2064 1260 -314 64 -550 85 -901 83 -137 -1 -266 -3 -285 -5z";
+
+    // found from mike bostock https://bl.ocks.org/mbostock/7555321
+    function wrapt(text, width) {
+  text.each(function() {
+    var text = d3.select(this),
+        words = text.text().split(/\s+/).reverse(),
+        word,
+        line = [],
+        lineNumber = 0,
+        lineHeight = 1.1, // ems
+        y = text.attr("y"),
+        dy = parseFloat(text.attr("dy")),
+        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+    while (word = words.pop()) {
+      line.push(word);
+      tspan.text(line.join(" "));
+      if (tspan.node().getComputedTextLength() > width) {
+        line.pop();
+        tspan.text(line.join(" "));
+        line = [word];
+        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+      }
+    }
+  });
+
+}
+//found at https://www.sitepoint.com/community/t/capitalizing-first-letter-of-each-word-in-string/209644
+function titleCase(str) {
+     str = str.toLowerCase().split(' ');                // will split the string delimited by space into an array of words
+
+     for(var i = 0; i < str.length; i++){               // str.length holds the number of occurrences of the array...
+          str[i] = str[i].split('');                    // splits the array occurrence into an array of letters
+          str[i][0] = str[i][0].toUpperCase();          // converts the first occurrence of the array to uppercase
+          str[i] = str[i].join('');                     // converts the array of letters back into a word.
+     }
+     return str.join(' ');                              //  converts the array of words back to a sentence.
+}
+    //END OF HELPER FUNCTIONS FOR CREATING PEOPLE GRAPHS
+
+    var width = 600;
+    var height = 700;
+    var features, s, t;
+
+    //53574.48828063629
+    var projection = d3.geoMercator().scale(53570.)
+    .translate([82274.0318523881, 43442.213458125654]);
+    //.translate([82514.0318523881, 43392.213458125654]);
+
+    var path = d3.geoPath()
+    .projection(projection);
+
+
+    var svg = d3.select('#map')
+    .attr("width", width)
+    .attr("height", height);
+
+
+    logdom = [0,5,10,20,30];
+    logrange=["#ffffcc","#fd8d3c", "#e31a1c","#bd0026","#800026"]
+    var g = svg.append('g');
+
+    var colorScale = d3.scaleLinear()
+      .domain(logdom)
+      .range(logrange)
+
+    var legend = svg.append("defs")
+      .append("svg:linearGradient")
+      .attr("id", "gradient")
+      .attr("x1", "0%")
+      .attr("y1", "100%")
+      .attr("x2", "100%")
+      .attr("y2", "100%")
+      .attr("spreadMethod", "pad");
+
+    legend.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#ffffcc")
+      .attr("stop-opacity", 1);
+    //
+    legend.append("stop")
+      .attr("offset", "25%")
+      .attr("stop-color", "#fd8d3c")
+      .attr("stop-opacity", 1);
+    //7/9 78%
+    legend.append("stop")
+      .attr("offset", "50%")
+      .attr("stop-color", "#e31a1c")
+      .attr("stop-opacity", 1);
+    //8/9 89%
+    legend.append("stop")
+      .attr("offset", "75%")
+      .attr("stop-color", "#bd0026")
+      .attr("stop-opacity", 1);
+    // 9/9 100%
+    legend.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#800026")
+      .attr("stop-opacity", 1);
+
+    svg.append("rect")
+        .attr("width", 200)
+        .attr("height", 20)
+        .style("fill", "url(#gradient)")
+        .attr("transform", "translate(50,450)rotate(-90)");
+
+    //manual key info
+    svg.append("rect")
+      .attr("width",200)
+      .attr("height",3)
+      .style("fill","white")
+      .attr("transform", "translate(70,450)rotate(-90)");
+
+    svg.append("rect")
+      .style("fill","white")
+      .attr("x",73)
+      .attr("y",447)
+      .attr("height",3)
+      .attr("width",9)
+
+    svg.append("text")
+      .style("fill","white")
+      .style("font-size","11px")
+      .attr("x",84)
+      .attr("y",453)
+      .text("1%")
+
+//[0,5,10,20,30];
+  //50-3
+    svg.append("rect")
+      .style("fill","white")
+      .attr("x",73)
+      .attr("y",447)
+      .attr("height",3)
+      .attr("width",9)
+      .attr("transform","translate(0,-47)")
+
+    svg.append("text")
+      .style("fill","white")
+      .style("font-size","11px")
+      .attr("x",84)
+      .attr("y",453)
+      .text("5%")
+      .attr("transform","translate(0,-47)")
+
+    svg.append("rect")
+      .style("fill","white")
+      .attr("x",73)
+      .attr("y",447)
+      .attr("height",3)
+      .attr("width",9)
+      .attr("transform","translate(0,-97)")
+
+    svg.append("text")
+      .style("fill","white")
+      .style("font-size","11px")
+      .attr("x",84)
+      .attr("y",453)
+      .text("10%")
+      .attr("transform","translate(0,-97)")
+
+    svg.append("rect")
+      .style("fill","white")
+      .attr("x",73)
+      .attr("y",447)
+      .attr("height",3)
+      .attr("width",9)
+      .attr("transform","translate(0,-147)")
+
+    svg.append("text")
+      .style("fill","white")
+      .style("font-size","11px")
+      .attr("x",84)
+      .attr("y",453)
+      .text("20%")
+      .attr("transform","translate(0,-147)")
+
+
+    svg.append("rect")
+      .style("fill","white")
+      .attr("x",73)
+      .attr("y",447)
+      .attr("height",3)
+      .attr("width",9)
+      .attr("transform","translate(0,-197)")
+
+    svg.append("text")
+      .style("fill","white")
+      .style("font-size","11px")
+      .attr("x",84)
+      .attr("y",453)
+      .text("32%")
+      .attr("transform","translate(0,-197)")
+
+
+
+
+
+
+
+
+    d3.csv("visual_info.csv", function(datas){
+      d3.json('visualized_json.json',function(error,visual_json){
+      pplinfo=visual_json;
+      d3.json('Neighborhoods_2012b.geojson', function(error, mapData) {
+
+      //LOAD DATA
+      var neighborhoodslval=[];
+      for(var iter=0; iter<datas.length; iter++){
+        tempkey=datas[iter].COMMUNITY_AREA;
+        tempval=datas[iter].total_listed_normalized;
+        neighborhoodslval[tempkey]=tempval;
+
+
+
+
+
+      }
+      features = mapData.features;
+      svg.selectAll('path')
+      .data(features)
+      .enter().append('path')
+      .attr('d', path)
+      .style('stroke', 'black')
+      .style('fill', function(d){
+
+      var row_name = determine_neighborhood(d);
+      var total_listed_norm;
+      if (row_name!="GARFIELD PARK"){row = pplinfo[row_name];}
+      else{
+        var westgar = pplinfo["WEST GARFIELD PARK"];
+        var eastgar = pplinfo["EAST GARFIELD PARK"];
+        westgar.total_listed_normalized= (westgar.total_listed_normalized*17742 + eastgar.total_listed_normalized*20656)/(17742+20656)
+
+        row = westgar;
+      }
+      return(colorScale(row.total_listed_normalized))
+
+      })
+      .attr("class","mappieces")//CAN DELETE THIS IF IT DONT WORK
+      .on('click', clicked)
+      .on("mouseover",hover)
+      .on('mouseout', mouseout);
+    })})
+  });
+    function getZIP(d){
+      return d.properties.pri_neigh;
+    }
+    function getID(d){
+      return d.id;
+    }
+    function clicked(d) {
+      d3.select("#ZipText")
+      .remove();
+      d3.select("#map").append("text")
+      .attr("x", 400)
+      .attr("y", 100)
+      .style("fill", "white")
+      .attr("id", "ZipText")
+      .text(getZIP(d));
+
+
+      //PPL GRAPH CODE
+      d3.selectAll('.pplpoints').remove();
+      d3.selectAll('.axis').remove();
+      d3.selectAll('.cutoff').remove();
+      var row_name = determine_neighborhood(d)
+      var row;
+
+      //Chicago GeoJson does not distinguish between the garfield parks
+      if (row_name!="GARFIELD PARK"){row = pplinfo[row_name];}
+      else{
+        var eastgar = pplinfo["EAST GARFIELD PARK"];
+        var westgar = pplinfo["WEST GARFIELD PARK"];
+        var totalgar=[];
+        totalgar.white_present= westgar.white_present + eastgar.white_present;
+        totalgar.white_listed = westgar.white_listed + eastgar.white_listed;
+        totalgar.black_present= westgar.black_present + eastgar.black_present;
+        totalgar.black_listed = westgar.black_listed +eastgar.black_listed;
+        totalgar.hispanic_present = westgar.hispanic_present+eastgar.hispanic_present;
+        totalgar.hispanic_listed = westgar.hispanic_listed+eastgar.hispanic_listed;
+        totalgar.native_present=westgar.native_present+eastgar.native_present;
+        totalgar.native_listed =westgar.native_listed+eastgar.native_listed;
+        totalgar.asian_present=westgar.asian_present+eastgar.asian_present;
+        totalgar.asian_listed=westgar.asian_listed+eastgar.asian_listed;
+        totalgar.unknown_present=westgar.unknown_present+eastgar.unknown_present;
+        totalgar.unknown_listed=westgar.unknown_listed+eastgar.unknown_listed;
+
+        totalgar.total_listed_normalized= (westgar.total_listed_normalized*17742+ eastgar.total_listed_normalized*20656)/(17742+20656)
+        totalgar.median_income =(westgar.median_income*17742+ eastgar.median_income*20656)/(17742+20656)
+        totalgar.median_income=totalgar.median_income.toFixed(0);
+        totalgar.poverty_rate = (westgar.poverty_rate*17742+eastgar.poverty_rate*20656)/(17742+20656);
+
+        console.log([totalgar.white_listed,totalgar.black_listed,totalgar.hispanic_listed,totalgar.asian_listed])
+        console.log([totalgar.white_present,totalgar.black_present,totalgar.hispanic_present,totalgar.asian_present])
+        totalgar.white_percentages    = 100*totalgar.white_listed/(Math.max(1,totalgar.white_present));
+        totalgar.black_percentages    = 100*totalgar.black_listed/(Math.max(1,totalgar.black_present));
+        totalgar.hispanic_percentages = 100*totalgar.hispanic_listed/(Math.max(1,totalgar.hispanic_present));
+        totalgar.asian_percentages    = 100*totalgar.asian_listed/(Math.max(1,totalgar.asian_present));
+        totalgar.native_percentages   = 100*totalgar.native_listed/(Math.max(1,totalgar.native_present));
+        totalgar.unknown_percentages  = 100*totalgar.unknown_listed/(Math.max(1,totalgar.unknown_present));
+
+        row=totalgar;
+      }
+
+      d3.select("#map").append("text")
+      .attr("x", 400)
+      .attr("y", 130)
+      .style("fill", "white")
+      .attr("class", "axis")
+      .text("People Listed: "+row.total_listed_normalized.toFixed(2).toString()+"%");
+
+      d3.select("#map").append("text")
+      .attr("x", 400)
+      .attr("y", 160)
+      .style("fill", "white")
+      .attr("class", "axis")
+      .text("Median Income: $"+row.median_income.toString());
+
+      d3.select("#map").append("text")
+      .attr("x", 400)
+      .attr("y", 190)
+      .style("fill", "white")
+      .attr("class", "axis")
+      .text("Poverty Rate: "+row.poverty_rate.toFixed(2).toString()+"%");
+
+      var maxppl = Math.max(...[row.white_present,row.white_present,row.black_listed,row.black_present,row.hispanic_listed,row.hispanic_present,row.asian_present,row.asian_present]);
+      var maxpplpercents = Math.max(...[100,row.white_percentages,row.black_percentages,row.hispanic_percentages,row.asian_percentages,row.native_percentages,row.unknown_percentages]);
+      //was originally linear
+      var ppl_scale = d3.scaleLinear()
+        .domain([0,maxppl])
+        .range([550,50]);
+
+      var groups_scale = d3.scaleBand()
+        .domain(["WHITE LISTED".toLowerCase(),"WHITE PRESENT".toLowerCase(),"BLACK LISTED".toLowerCase(),"BLACK PRESENT".toLowerCase(),"HISPANIC LISTED".toLowerCase(),"HISPANIC PRESENT".toLowerCase(),"ASIAN LISTED".toLowerCase(),"ASIAN PRESENT".toLowerCase(),"NATIVE LISTED".toLowerCase(),"NATIVE PRESENT".toLowerCase(),"UNKNOWN LISTED".toLowerCase(),"UNKNOWN PRESENT".toLowerCase()])
+        .rangeRound([75,575])
+        .padding([.2]);
+
+      var groups_scale_percents =d3.scaleBand()
+        .domain(["Black","White","Hispanic","Asian","Native","Unknown"])
+        .rangeRound([75,575])
+        .padding(.05)
+
+      function groups_scale_percents_colors(group) {
+
+
+
+        if(group=="white"){return "#ce1256 ";}
+        if(group=="black"){return "#980043";}
+        if(group=="hispanic"){return "#e7298a"}
+        if(group=="asian"){return "#df65b0"}
+        if(group=="native"){return "#c994c7"}
+        else{
+          return "#d4b9da"
+        }
+      }
+
+      var ppl_scale_percents = d3.scaleLinear()
+        .domain([0,maxpplpercents])
+        .range([550,50]);
+
+
+
+      var ppl_axis = d3.axisLeft(ppl_scale);
+      var groups_axis= d3.axisBottom(groups_scale);
+
+      var ppl_axis_percents = d3.axisLeft(ppl_scale_percents);
+      var groups_axis_percents = d3.axisBottom(groups_scale_percents);
+
+
+
+
+
+
+      //person to ppl graph
+      function addperson(x,y,ppl_svg,color){
+        ppl_svg.append('path')
+          .attr("d", personpath)
+          .attr("fill",color)
+          .attr("transform","translate("+x.toString()+","+y.toString()+") scale(0.0010000, -0.0010000)")
+          .attr("class","pplpoints")
+      }
+      // cut off people to make height argument
+      //
+      function addcutoff(x,y,ppl_svg){
+        ppl_svg.append("rect")
+          .attr("x",x.toString())
+          .attr("y","40")
+          .attr("width","30")
+          .attr("height",(y-40).toString())
+          .attr("fill","black")
+          .attr("class","cutoff");
+
+
+      }
+      function populate_graph(row){
+        ppl_svg.append("g")
+          .attr("class","axis")
+          .attr("transform","translate(75,0)")
+          .call(ppl_axis);
+
+        ppl_svg.append("g")
+          .attr("class","axis")
+          .attr("transform","translate(0,550)")
+          .call(groups_axis)
+          .selectAll("text")
+          .style("font-size","7px")
+          .call(wrapt,groups_scale.bandwidth() );
+        var ypos = ppl_scale(0);
+        var dy=17;
+        while(ypos>50){
+          addperson(groups_scale('WHITE LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('WHITE PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          addperson(groups_scale('BLACK LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('BLACK PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          addperson(groups_scale('HISPANIC LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('HISPANIC PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          addperson(groups_scale('ASIAN LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('ASIAN PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          addperson(groups_scale('NATIVE LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('NATIVE PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          addperson(groups_scale('UNKNOWN LISTED'.toLowerCase())+9,ypos,ppl_svg,"red");
+          addperson(groups_scale('UNKNOWN PRESENT'.toLowerCase())+9,ypos,ppl_svg,"blue");
+          ypos=ypos-dy;
+        }
+
+        addcutoff(groups_scale('WHITE LISTED'.toLowerCase())+9,ppl_scale(row.white_listed),ppl_svg)
+        addcutoff(groups_scale('WHITE PRESENT'.toLowerCase())+9,ppl_scale(row.white_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('WHITE LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.white_listed)-5).toString())
+          .text(row.white_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('WHITE PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.white_present)-5).toString())
+          .text(row.white_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+        addcutoff(groups_scale('BLACK LISTED'.toLowerCase())+9,ppl_scale(row.black_listed),ppl_svg)
+        addcutoff(groups_scale('BLACK PRESENT'.toLowerCase())+9,ppl_scale(row.black_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('BLACK LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.black_listed)-5).toString())
+          .text(row.black_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('BLACK PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.black_present)-5).toString())
+          .text(row.black_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+        addcutoff(groups_scale('HISPANIC LISTED'.toLowerCase())+9,ppl_scale(row.hispanic_listed),ppl_svg)
+        addcutoff(groups_scale('HISPANIC PRESENT'.toLowerCase())+9,ppl_scale(row.hispanic_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('HISPANIC LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.hispanic_listed)-5).toString())
+          .text(row.hispanic_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('HISPANIC PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.hispanic_present)-5).toString())
+          .text(row.hispanic_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+
+        addcutoff(groups_scale('ASIAN LISTED'.toLowerCase())+9,ppl_scale(row.asian_listed),ppl_svg)
+        addcutoff(groups_scale('ASIAN PRESENT'.toLowerCase())+9,ppl_scale(row.asian_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('ASIAN LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.asian_listed)-5).toString())
+          .text(row.asian_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('ASIAN PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.asian_present)-5).toString())
+          .text(row.asian_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+        addcutoff(groups_scale('NATIVE LISTED'.toLowerCase())+9,ppl_scale(row.native_listed),ppl_svg)
+        addcutoff(groups_scale('NATIVE PRESENT'.toLowerCase())+9,ppl_scale(row.native_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('NATIVE LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.native_listed)-5).toString())
+          .text(row.native_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('NATIVE PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.native_present)-5).toString())
+          .text(row.native_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+        addcutoff(groups_scale('UNKNOWN LISTED'.toLowerCase())+9,ppl_scale(row.unknown_listed),ppl_svg)
+        addcutoff(groups_scale('UNKNOWN PRESENT'.toLowerCase())+9,ppl_scale(row.unknown_present),ppl_svg)
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('UNKNOWN LISTED'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.unknown_listed)-5).toString())
+          .text(row.unknown_listed.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+        ppl_svg.append("text").attr("class","axis")
+          .attr("x",(groups_scale('UNKNOWN PRESENT'.toLowerCase())).toString())
+          .attr("y",(ppl_scale(row.unknown_present)-5).toString())
+          .text(row.unknown_present.toString())
+          .attr("text-align","center")
+          .attr("fill","white");
+
+        ppl_svg.append("text").attr("class","axis")
+          .attr("transform", "translate(25,350)rotate(-90)")
+          .attr("fill","white")
+          .text("Number of People")
+
+        ppl_svg.append("text").attr("class","axis")
+          .attr("transform","translate(170,25)")
+          .attr("fill","white")
+          .text("People Listed On the SSL and Present in "+titleCase(row_name))
+      }
+      function addpersonbar(ppl_svg,group,row){
+        var y = ppl_scale_percents(row[group+"_percentages"])
+        console.log(row[group+"_percentages"])
+        console.log(y)
+        console.log(groups_scale_percents.bandwidth())
+        console.log(groups_scale_percents_colors(group))
+        ppl_svg.append("rect")
+          .attr("x", groups_scale_percents(titleCase(group)))
+          .attr("y",y.toString())
+          .attr("width",groups_scale_percents.bandwidth())
+          .attr("height",(550-y).toString())
+          .attr("fill",groups_scale_percents_colors(group))
+          .attr("class","pplpoints")
+
+
+        //  .selectAll("text")
+        //  .call(wrapt,groups_scale.bandwidth() );
+
+
+      }
+
+
+
+      //populate_graph(row);
+      function populate_graph_percents(row){
+        addpersonbar(ppl_svg,"white",row);
+        addpersonbar(ppl_svg,"black",row);
+        addpersonbar(ppl_svg,"hispanic",row)
+        addpersonbar(ppl_svg,"asian",row)
+        addpersonbar(ppl_svg,"native",row)
+        addpersonbar(ppl_svg,"unknown",row)
+
+        ppl_svg.append("g")
+          .attr("class","axis")
+          .attr("transform","translate(75,0)")
+          .call(ppl_axis_percents);
+
+        ppl_svg.append("g")
+          .attr("class","axis")
+          .attr("transform","translate(0,550)")
+          .call(groups_axis_percents)
+          .style("font-size","12px")
+
+        ppl_svg.append("text").attr("class","axis")
+          .attr("transform","translate(110,25)")
+          .attr("fill","white")
+          .text("Percentage Of People Listed On the SSL By Ethnicity in "+titleCase(row_name))
+          .style("text-align","center")
+
+
+      }
+
+      populate_graph_percents(row);
+
+
+
+  }
+
+
+    function hover(d){
+
+      d3.select("#hovertext")
+      .remove();
+      d3.select("#map").append("text")
+      .attr("x", 120)
+      .attr("y", 50 )
+      .style("fill", "white")
+      .attr("id", "hovertext")
+      .text(getZIP(d));
+
+
+      //obj=d3.select(this);
+      //new_col= obj.attr("fill")=="blue"? "black":"blue"
+      //obj.attr("fill",new_col)});
+    }
+    function mouseout(d) {
+      d3.select("#hovertext")
+      .remove();
+
+    }
+
+
+
+
+
+
+
+    </script>
+  </body>
+
+</html>
